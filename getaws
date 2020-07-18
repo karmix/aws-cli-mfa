@@ -1,5 +1,7 @@
 getaws()
 {
   unset AWS_PROFILE AWS_SESSION_TOKEN AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID
-  eval $(AWS_PROFILE=$1 get-aws-creds)
+  local exports=$(AWS_PROFILE=$1 get-aws-creds)
+  test $? -eq 0 && export AWS_PROFILE=$1
+  eval "$exports"
 }
