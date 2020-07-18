@@ -20,6 +20,8 @@ You would typically use `aws-mfa-manager` with a command such as:
 `aws-mfa-manager` accepts the following commands:
 
 * `help` or `usage` - Show brief usage information.
+* `clear` - Removes the MFA credentials from your environment that were set
+  by setup.
 * `setup` - Talk to the AWS endpoints to discover your account and what
   MFA token is assigned then request the credentials and allow them to be
   exported.

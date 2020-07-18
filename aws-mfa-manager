@@ -67,11 +67,16 @@ cmd_setup() {
   echo Keys valid until $expire >&2
 } # cmd_setup()
 
+cmd_clear() {
+  echo unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+}
+
 show_usage() {
   cat <<END_OF_USAGE
 Usage: $0 <COMMAND> [<OPTION>...]
 
 Commands:
+  clear                 Clear MFA credentials.
   setup                 Obtain MFA credentials.
   help | usage          Show usage information.
 
@@ -94,6 +99,15 @@ main() {
   shift
 
   case "$opt_command" in
+    clear)
+      if [ ${1+set} ] ; then
+        echo "unrecognized option \"$1\" for command \"$opt_command\"" >&2
+        exit_with_usage 1
+      fi
+
+      cmd_clear
+      ;;
+
     setup)
       if [ ${1+set} ] ; then
         echo "unrecognized option \"$1\" for command \"$opt_command\"" >&2
