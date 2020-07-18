@@ -8,7 +8,7 @@
 if [ ! -t 0 ]
 then
   echo Must be on a tty >&2
-  exit 255
+  exit 1
 fi
 
 if [ -n "$AWS_SESSION_TOKEN" ]
@@ -18,7 +18,7 @@ then
 and then ensure you have a profile with the normal access key credentials or
 set the variables to the normal keys.
 " >&2
-  exit 255
+  exit 1
 fi
 
 userarn=$(aws sts get-caller-identity --output text --query Arn)
@@ -27,7 +27,7 @@ then
   echo "Can not identify who you are.  The output of
   aws sts get-caller-identity --output text --query Arn
 did not return an ARN." >&2
-  exit 255
+  exit 1
 fi
 
 username=${userarn##*/}
@@ -41,7 +41,7 @@ then
   aws iam list-mfa-devices --user-name "$username" \
     --output text --query 'MFADevices[0].SerialNumber'
 did not return a serial number." >&2
-  exit 255
+  exit 1
 fi
 
 echo Your MFA device is: $device >&2
@@ -62,7 +62,7 @@ then
   echo "Unable to get temporary credentials.  Could not find secret/access/session entries
 
 $tokens" >&2
-  exit 255
+  exit 1
 fi
 
 echo export AWS_SESSION_TOKEN=$session
