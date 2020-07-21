@@ -6,13 +6,19 @@
 # GPL 2 or higher
 
 cmd_setup() {
-  if [ -n "$AWS_SESSION_TOKEN" ]
+  # Don't use left over session tokens when attempting to re-authenticate with
+  # MFA.
+  if [ x${AWS_SESSION_TOKEN+set} = xset ] ; then
+    echo "Ignoring access keys associated with an AWS_SESSION_TOKEN." >&2
+    eval "$(cmd_clear)"
+  fi
+
+  if [ x${AWS_ACCESS_KEY_ID+set} = x -a x${AWS_PROFILE+set} = x ]
   then
-    echo "Session token found.  This can not be used to generate a new token.
-     unset AWS_SESSION_TOKEN AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID
-  and then ensure you have a profile with the normal access key credentials or
-  set the variables to the normal keys.
-  " >&2
+    echo "No credentials found.  Ensure you have set AWS_ACCESS_KEY_ID and
+  AWS_SECRET_ACCESS_KEY or set AWS_PROFILE to the name of a profile
+  containing the regular access key credentials.  (Note: You can not use
+  access keys associated with a session token to obtain MFA credentials.)" >&2
     exit 1
   fi
 
@@ -64,6 +70,12 @@ cmd_setup() {
     exit 1
   fi
 
+  if [ x${opt_save_keys:+set} = xset \
+      -a x${AWS_ACCESS_KEY_ID+set} = xset \
+      -a x${AWS_SECRET_ACCESS_KEY+set} = xset ] ; then
+    echo export AWSMFA_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+    echo export AWSMFA_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+  fi
   echo export AWS_SESSION_TOKEN=$session
   echo export AWS_SECRET_ACCESS_KEY=$secret
   echo export AWS_ACCESS_KEY_ID=$access
@@ -72,7 +84,27 @@ cmd_setup() {
 } # cmd_setup()
 
 cmd_clear() {
-  echo unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+  # Empty list of variables to clear.
+  set --
+
+  if [ x${AWS_SESSION_TOKEN+set} = xset ] ; then
+    set -- AWS_SESSION_TOKEN
+  fi
+
+  if [ x${AWSMFA_ACCESS_KEY_ID:+set} = xset \
+       -a x${AWSMFA_SECRET_ACCESS_KEY:+set} = xset ] ; then
+    echo "export AWS_ACCESS_KEY_ID='$AWSMFA_ACCESS_KEY_ID'"
+    echo "export AWS_SECRET_ACCESS_KEY='$AWSMFA_SECRET_ACCESS_KEY'"
+    set -- "$@" AWSMFA_ACCESS_KEY_ID AWSMFA_SECRET_ACCESS_KEY
+  else
+    if [ x${AWS_SESSION_TOKEN+set} = xset ] ; then
+      set -- "$@" AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+    fi
+  fi
+
+  if [ $# -gt 0 ] ; then
+    echo unset "$@"
+  fi
 }
 
 show_usage() {
@@ -88,6 +120,8 @@ Options for the "setup" command:
   -d SECONDS | --duration SECONDS
                         Request that credentials remain valid for SECONDS
                         seconds.
+  -s | --save-keys      Keep non-MFA credentials in the environment and use
+                        them to setup future MFA sessions.
 
 END_OF_USAGE
 }
@@ -106,6 +140,8 @@ main() {
 
   opt_command=$1
   shift
+
+  unset opt_duration opt_save_keys
 
   case "$opt_command" in
     clear)
@@ -129,6 +165,10 @@ main() {
             echo "duration \"$opt_duration\" is not an integer" >&2
             exit_with_usage 1
           fi
+          ;;
+
+        -s|--save-keys)
+          opt_save_keys=set
           ;;
 
         *)

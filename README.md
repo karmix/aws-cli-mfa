@@ -34,6 +34,24 @@ The `setup` command accepts the following options:
 * `-d SECONDS` or `--duration SECONDS` - When requesting a session token from
   AWS, ask that the credentials be valid for SECONDS seconds.
 
+* `-s` or `--save-keys` - Save non-MFA access keys for use with future calls
+  to `aws-mfa-manager`.
+
+  The temporary access keys for an MFA session will replace the permanent
+  access keys in a shell's environment that were used to start the MFA
+  session.  You can not use access keys for an MFA session to setup
+  another MFA session.  When the temporary MFA session expires, and the
+  `--save-keys` option is not used, you must clear the session credentials
+  then set the access key environment variables back to their original values
+  before you can setup a new MFA session.
+
+  When you use the `--save-keys` option, `aws-mfa-manager` uses alternative
+  variables in the shell's environment (that to not get overwritten by MFA
+  session credentials) to save a copy of the permanent access keys used to
+  setup the MFA session.  `aws-mfa-manager` will restore saved keys when you
+  clear an MFA session.  It will also use the saved credentials if you setup a
+  new MFA session without clearing an old one.
+
 ## bash-functions.gpg2.sh
 
 This is a set of bash functions that provide an example of how someone
