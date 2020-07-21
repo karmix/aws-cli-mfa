@@ -5,12 +5,16 @@
 #
 # GPL 2 or higher
 
+credentials_file() {
+  echo "${AWS_SHARED_CREDENTIALS_FILE:-~/.aws/credentials}"
+}
+
 cmd_setup() {
   # Don't use left over session tokens when attempting to re-authenticate with
   # MFA.
   if [ x${AWS_SESSION_TOKEN+set} = xset ] ; then
     echo "Ignoring access keys associated with an AWS_SESSION_TOKEN." >&2
-    eval "$(cmd_clear)"
+    eval "$(clear_env)"
   fi
 
   if [ x${AWS_ACCESS_KEY_ID+set} = x -a x${AWS_PROFILE+set} = x ]
@@ -70,20 +74,44 @@ cmd_setup() {
     exit 1
   fi
 
-  if [ x${opt_save_keys:+set} = xset \
-      -a x${AWS_ACCESS_KEY_ID+set} = xset \
-      -a x${AWS_SECRET_ACCESS_KEY+set} = xset ] ; then
-    echo export AWSMFA_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-    echo export AWSMFA_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+  if [ x${opt_save_keys:+set} = xset ] ; then
+    if [ x${AWS_ACCESS_KEY_ID+set} = xset \
+         -a x${AWS_SECRET_ACCESS_KEY+set} = xset ] ; then
+      echo export AWSMFA_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+      echo export AWSMFA_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+    fi
+    if [ x${opt_update_profile:+set} = xset ] ; then
+      echo "export AWSMFA_UPDATED_PROFILE='${opt_update_profile}'"
+      if [ x${AWS_PROFILE:+set} = xset ] ; then
+        echo "export AWSMFA_PROFILE='$AWS_PROFILE'"
+      else
+        echo "unset AWSMFA_PROFILE"
+      fi
+    fi
   fi
-  echo export AWS_SESSION_TOKEN=$session
-  echo export AWS_SECRET_ACCESS_KEY=$secret
-  echo export AWS_ACCESS_KEY_ID=$access
+
+  if [ x${opt_update_profile:+set} = xset ] ; then
+    remove_shared_creds "$opt_update_profile"
+
+    (
+      echo "[$opt_update_profile]"
+      echo "AWS_SESSION_TOKEN=$session"
+      echo "AWS_ACCESS_KEY_ID=$access"
+      echo "AWS_SECRET_ACCESS_KEY=$secret"
+    )  >> "$(credentials_file)"
+
+    echo "export AWS_PROFILE='$opt_update_profile'"
+    echo unset AWS_SESSION_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+  else
+    echo export AWS_SESSION_TOKEN=$session
+    echo export AWS_SECRET_ACCESS_KEY=$secret
+    echo export AWS_ACCESS_KEY_ID=$access
+  fi
 
   echo Keys valid until $expire >&2
 } # cmd_setup()
 
-cmd_clear() {
+clear_env() {
   # Empty list of variables to clear.
   set --
 
@@ -102,9 +130,36 @@ cmd_clear() {
     fi
   fi
 
+  if [ x${AWSMFA_UPDATED_PROFILE:+set} = xset ] ; then
+    if [ x$AWSMFA_UPDATED_PROFILE = x$AWS_PROFILE ] ; then
+      if [ x${AWSMFA_PROFILE:+set} = xset ] ; then
+       echo "export AWS_PROFILE='$AWSMFA_PROFILE'"
+      else
+        set -- "$@" AWS_PROFILE
+      fi
+    fi
+    set -- "$@" AWSMFA_UPDATED_PROFILE AWSMFA_PROFILE
+  fi
+
   if [ $# -gt 0 ] ; then
     echo unset "$@"
   fi
+}
+
+remove_shared_creds() {
+  profile=$1
+  if [ x${profile:+set} = xset ] ; then
+    sed -i '
+      /^\['$profile']/,/^\[/ {
+        /^\[/! d
+        /^\['$profile']/ d
+      }' "$(credentials_file)"
+  fi
+}
+
+cmd_clear() {
+  remove_shared_creds "$AWSMFA_UPDATED_PROFILE"
+  clear_env
 }
 
 show_usage() {
@@ -122,6 +177,9 @@ Options for the "setup" command:
                         seconds.
   -s | --save-keys      Keep non-MFA credentials in the environment and use
                         them to setup future MFA sessions.
+  -u NAME | --update-profile NAME
+                        Write credentials for the MFA session to the shared
+                        credentials file under the profile named NAME.
 
 END_OF_USAGE
 }
@@ -169,6 +227,15 @@ main() {
 
         -s|--save-keys)
           opt_save_keys=set
+          ;;
+
+        -u|--update-profile)
+          opt_update_profile=$1
+          shift
+          if [ -z "$opt_update_profile" ] ; then
+            echo "profile name \"$opt_update_profile\" is not valid" >&2
+            exit_with_usage 1
+          fi
           ;;
 
         *)

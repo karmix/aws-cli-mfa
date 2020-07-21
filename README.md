@@ -52,6 +52,9 @@ The `setup` command accepts the following options:
   clear an MFA session.  It will also use the saved credentials if you setup a
   new MFA session without clearing an old one.
 
+* `-u NAME` or `--update-profile NAME` - Write credentials for the MFA
+  session to the shared credentials file under the profile named NAME.
+
 ## bash-functions.gpg2.sh
 
 This is a set of bash functions that provide an example of how someone
