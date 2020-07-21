@@ -12,7 +12,7 @@ loadawskeys() {
 }
 
 getawsmfa() {
-  eval "$(aws-mfa-manager setup)"
+  eval "$(aws-mfa-manager setup "$@")"
 }
 
 clearawsmfa() {

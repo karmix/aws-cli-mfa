@@ -44,7 +44,11 @@ cmd_setup() {
   echo -n "Enter your MFA code now: " >&2
   read code
 
-  tokens=$(aws sts get-session-token --serial-number "$device" --token-code $code --output text)
+  set -- --serial-number "$device" --token-code "$code" --output text
+  if [ x${opt_duration:+set} = xset ] ; then
+    set -- "$@" --duration-seconds "$opt_duration"
+  fi
+  tokens=$(aws sts get-session-token "$@")
 
   set -- $tokens
   access=$2
@@ -73,12 +77,17 @@ cmd_clear() {
 
 show_usage() {
   cat <<END_OF_USAGE
-Usage: $0 <COMMAND> [<OPTION>...]
+Usage: ${0##*/} <COMMAND> [<OPTION>...]
 
 Commands:
   clear                 Clear MFA credentials.
   setup                 Obtain MFA credentials.
   help | usage          Show usage information.
+
+Options for the "setup" command:
+  -d SECONDS | --duration SECONDS
+                        Request that credentials remain valid for SECONDS
+                        seconds.
 
 END_OF_USAGE
 }
@@ -109,10 +118,25 @@ main() {
       ;;
 
     setup)
-      if [ ${1+set} ] ; then
-        echo "unrecognized option \"$1\" for command \"$opt_command\"" >&2
-        exit_with_usage 1
-      fi
+      while [ $# -gt 0 ] ; do
+        opt=$1
+        shift
+        case "$opt" in
+        -d|--duration)
+          opt_duration=$1
+          shift
+          if [[ ! "$opt_duration" =~ ^[0-9]+$ ]] ; then
+            echo "duration \"$opt_duration\" is not an integer" >&2
+            exit_with_usage 1
+          fi
+          ;;
+
+        *)
+          echo "unrecognized option \"$opt\" for command \"$opt_command\"" >&2
+          exit_with_usage 1
+          ;;
+        esac
+      done
 
       cmd_setup
       ;;

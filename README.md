@@ -16,6 +16,8 @@ You would typically use `aws-mfa-manager` with a command such as:
 
     eval "$(aws-mfa-manager setup)"
 
+### Commands
+
 `aws-mfa-manager` accepts the following commands:
 
 * `help` or `usage` - Show brief usage information.
@@ -24,6 +26,13 @@ You would typically use `aws-mfa-manager` with a command such as:
 * `setup` - Talk to the AWS endpoints to discover your account and what
   MFA token is assigned then request the credentials and allow them to be
   exported.
+
+### Options for `setup`
+
+The `setup` command accepts the following options:
+
+* `-d SECONDS` or `--duration SECONDS` - When requesting a session token from
+  AWS, ask that the credentials be valid for SECONDS seconds.
 
 ## bash-functions.gpg2.sh
 

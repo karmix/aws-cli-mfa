@@ -1,7 +1,9 @@
 getaws()
 {
   unset AWS_PROFILE AWS_SESSION_TOKEN AWS_SECRET_ACCESS_KEY AWS_ACCESS_KEY_ID
-  local exports=$(AWS_PROFILE=$1 aws-mfa-manager setup)
+  profile=$1
+  shift
+  local exports=$(AWS_PROFILE=$profile aws-mfa-manager setup "$@")
   test $? -eq 0 && export AWS_PROFILE=$1
   eval "$exports"
 }
