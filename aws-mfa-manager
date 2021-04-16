@@ -95,9 +95,9 @@ cmd_setup() {
 
     (
       echo "[$opt_update_profile]"
-      echo "AWS_SESSION_TOKEN=$session"
-      echo "AWS_ACCESS_KEY_ID=$access"
-      echo "AWS_SECRET_ACCESS_KEY=$secret"
+      echo "aws_session_token=$session"
+      echo "aws_access_key_id=$access"
+      echo "aws_secret_access_key=$secret"
     )  >> "$(credentials_file)"
 
     echo "export AWS_PROFILE='$opt_update_profile'"
